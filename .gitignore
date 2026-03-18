@@ -1,7 +1,1 @@
-__pycache__/
-*.pyc
-pyro_results/
-checkpoints/latest_pyro.pth
-checkpoints/best_pyro.pth
-# keep best_pyro_fire.pth
-!checkpoints/best_pyro_fire.pth
+
