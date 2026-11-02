@@ -1,4 +1,4 @@
-"""
+r"""
 PYRO 🔥 Inference Script
 
 Runs fire segmentation on a single image or a folder of images.

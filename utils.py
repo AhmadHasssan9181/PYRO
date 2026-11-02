@@ -5,8 +5,8 @@ def compute_confusion_matrix(preds, labels, num_classes, ignore_index=255):
     preds  = preds.flatten()
     labels = labels.flatten()
     mask   = (labels >= 0) & (labels < num_classes) & (labels != ignore_index)
-    labels_i = labels[mask].astype(int)
-    preds_i  = preds[mask].astype(int)
+    labels_i = labels[mask].astype(np.int32)
+    preds_i  = preds[mask].astype(np.int32)
     hist = np.bincount(
         num_classes * labels_i + preds_i,
         minlength=num_classes * num_classes
