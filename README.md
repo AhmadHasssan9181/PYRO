@@ -29,19 +29,33 @@
 
 ---
 
-## ⚡ Overview
+## 📑 Table Of Contents
 
-Autonomous aerial monitoring of wildfires poses a critical computer vision challenge: **fire pixels frequently occupy less than 1% of high-altitude aerial imagery**, while smoke, sun glint, red soil, and reflective roofs produce frequent false alarms.
-
-**PYRO** solves this with a lightweight neural network engineered for real-time edge drone inference:
-* **Mobile-First Backbone:** MobileNetV3-Small encoder running with high throughput on onboard companion chips (e.g. Raspberry Pi, Android, Jetson Nano).
-* **Multi-Scale Context:** Atrous Spatial Pyramid Pooling (ASPP) captures both pinhead ember sparks and sweeping forest fire lines without resolution loss.
-* **SE-Attention Skips:** 5-stage U-Net decoder with Squeeze-and-Excitation channel gating suppresses background landscape clutter before concatenation.
-* **Extreme Imbalance Loss:** Hybrid **Tversky Loss** (penalizes missed fire false-negatives) + **Focal Loss** (down-weights background pixels).
+- [What PYRO Is](#what-pyro-is)
+- [The Extreme Class Imbalance Challenge](#the-extreme-class-imbalance-challenge)
+- [System Architecture](#system-architecture)
+- [Compound Loss Formulation](#compound-loss-formulation)
+- [Visual Evaluation Results](#visual-evaluation-results)
+- [Quickstart & Inference](#quickstart--inference)
+- [Repository Structure](#repository-structure)
+- [Citation](#citation)
+- [License](#license)
 
 ---
 
-## 🧠 Model Architecture
+## 🔥 What PYRO Is
+
+Autonomous aerial monitoring of wildfires poses a severe computer vision challenge: **fire pixels frequently occupy less than 1% of high-altitude drone imagery**, while smoke plumes, sunlight glint, dry red clay, and reflective metal roofs trigger constant false alarms.
+
+**PYRO** solves this with an edge-first neural network engineered specifically for real-time UAV inference:
+* **Mobile-First Backbone:** MobileNetV3-Small encoder running with low latency on companion SBCs (Android companion computers, Raspberry Pi 5, Jetson).
+* **Multi-Scale Spatial Context:** Atrous Spatial Pyramid Pooling (ASPP) bottleneck captures both isolated sparks and wide fire fronts without spatial resolution loss.
+* **SE-Attention Skips:** 5-stage U-Net decoder with Squeeze-and-Excitation channel gating suppresses background landscape noise before concatenation.
+* **Extreme Imbalance Handling:** Hybrid **Tversky Loss** (harshly penalizes missed fire false-negatives) + **Focal Loss** (down-weights simple background pixels).
+
+---
+
+## 🧠 System Architecture
 
 ```mermaid
 graph TD
@@ -57,25 +71,39 @@ graph TD
 ### Component Details
 | Stage | Component | Function |
 | :--- | :--- | :--- |
-| **Encoder** | MobileNetV3-Small (Pretrained) | Extracts hierarchical spatial features with depthwise-separable convolutions. |
-| **Bottleneck** | ASPP Module | Parallel atrous convolutions with distinct sampling rates for multi-scale receptive field. |
-| **Attention** | Squeeze-and-Excitation (SE) | Channel-wise recalibration that boosts fire-sensitive feature maps while dampening terrain noise. |
-| **Decoder** | 5-Stage U-Net | Successive bilinearly upsampled feature reconstruction with residual skip connections. |
+| **Encoder** | MobileNetV3-Small (Pretrained) | Extracts hierarchical spatial features via depthwise-separable convolutions. |
+| **Bottleneck** | ASPP Module | Parallel dilated convolutions with multiple sampling rates for wide receptive fields. |
+| **Attention** | Squeeze-and-Excitation (SE) | Channel-wise recalibration that amplifies fire-sensitive features while dampening soil/sun glint. |
+| **Decoder** | 5-Stage U-Net | Successive bilinear upsampling with residual skip connections. |
 
 ---
 
-## 🎯 Loss Function Formulation
+## 🎯 Compound Loss Formulation
 
-Standard cross-entropy collapses when 99.3% of the image is background. PYRO is trained using a specialized compound objective:
+Standard cross-entropy collapses into a "lazy local minimum" when 99.3% of the image pixels are background. PYRO is trained using a specialized compound objective:
 
 $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{Tversky}}(\alpha=0.3, \beta=0.7) + \lambda \mathcal{L}_{\text{Focal}}(\gamma=2.0)$$
 
-* **Tversky Index ($\beta=0.7$):** Places significantly higher penalty on false negatives to guarantee early-stage fire spots are never missed.
-* **Focal Loss ($\gamma=2.0$):** Dynamically scales gradient flow so easy non-fire background pixels do not dominate weight updates.
+* **Tversky Index ($\beta=0.7$):** Places significantly higher penalty on false negatives to guarantee early-stage wildfire ignitions are never missed.
+* **Focal Loss ($\gamma=2.0$):** Dynamically scales gradient flow so easy non-fire background pixels do not dominate backpropagation.
 
 ---
 
-## 🚀 Quickstart
+## 📸 Visual Evaluation Results
+
+Below are real model predictions produced by PYRO on unseen aerial wildfire drone footage:
+
+<p align="center">
+  <img src="./assets/sunshine-on-the-wildfire-512_pyro.jpg" width="48%" alt="Wildfire Aerial Segmentation" />
+  <img src="./assets/burning-wheat-fields-512_pyro.jpg" width="48%" alt="Field Fire Segmentation" />
+</p>
+<p align="center">
+  <em>Left: Intense forest fire plume with heavy smoke occlusion. Right: Rapid grassfire line detection across agricultural terrain.</em>
+</p>
+
+---
+
+## 🚀 Quickstart & Inference
 
 ### 1. Installation
 ```bash
@@ -105,26 +133,27 @@ python pyro_train.py --data_dir /path/to/FLAME --epochs 150 --batch_size 16 --im
 
 ## 📦 Repository Structure
 
-```
+```text
 PYRO/
 ├── assets/
-│   ├── pyro-banner.png         # High-resolution project banner
-│   └── pyro-banner.svg         # Scalable vector graphics header
+│   ├── pyro-banner.png                      # High-resolution project banner
+│   ├── sunshine-on-the-wildfire-512_pyro.jpg# Real wildfire model inference output
+│   └── burning-wheat-fields-512_pyro.jpg    # Grassfire model inference output
 ├── checkpoints/
-│   └── best_pyro_fire.pth      # Optimized pre-trained model weights
-├── pyro_model.py               # MobileNetV3 + ASPP + SE-UNet architecture
-├── pyro_dataset.py             # FLAME dataloader with Albumentations augmentation
-├── pyro_inference.py           # Single-frame inference and mask generation
-├── pyro_video.py               # Streamlined video processing pipeline
-├── pyro_train.py               # Training loop with compound Tversky-Focal loss
-└── utils.py                    # Metrics calculation and heatmap visualizers
+│   └── best_pyro_fire.pth                   # Pre-trained production weights
+├── pyro_model.py                            # MobileNetV3 + ASPP + SE-UNet architecture
+├── pyro_dataset.py                          # FLAME dataloader with Albumentations
+├── pyro_inference.py                        # Single-frame inference and mask generation
+├── pyro_video.py                            # Video stream processing pipeline
+├── pyro_train.py                            # Training loop with compound Tversky-Focal loss
+└── utils.py                                 # Metrics calculation and heatmap visualizers
 ```
 
 ---
 
-## 🤝 Citation & Dataset Acknowledgement
+## 🤝 Citation
 
-PYRO is trained and benchmarked on the **FLAME: Fire Luminosity Airborne-based Machine learning Evaluation** dataset:
+Benchmark dataset:
 ```bibtex
 @article{flame2021,
   title={FLAME: Aerial Imagery Pile Burn Detection Using Drones (UAVs)},
